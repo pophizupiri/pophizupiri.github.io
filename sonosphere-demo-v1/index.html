@@ -386,7 +386,7 @@
       'sphericalHarmonicsDegree': 0,
       'enableOptionalEffects': false,
       'inMemoryCompressionLevel': 2,
-      // 'freeIntermediateSplatData': true
+      'freeIntermediateSplatData': false
     });
     
 
@@ -469,7 +469,7 @@
               // 'rotation': [0, 0, 0, 1],
               // 'scale': [1.0, -1.0, 1.0],
               'scale': [1.0, 1.0, 1.0],
-              'progressiveLoad': false,
+              'progressiveLoad': true,
             },
           );
         }).catch((err)=>{
@@ -487,7 +487,7 @@
             'rotation': [-.5, -.5, -.5, .5],
             // 'scale': [-1.0, -1.0, 1.0],
             'scale': [1.0, 1.0, 1.0],
-            'progressiveLoad': false,
+            'progressiveLoad': true,
           },
         ).then(()=>{
           requestAnimationFrame(update);
