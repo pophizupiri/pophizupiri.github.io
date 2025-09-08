@@ -1,0 +1,557 @@
+<!--  -->
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js Doppler Demo</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #info {
+      position: absolute; top: 10px; left: 10px;
+      color: #fff; font-family: sans-serif; font-size: 10px;
+      background: rgba(0,0,0,0.5); padding: 10px;
+      /* make this window larger */
+      /* width: 500px; height: 300px; */
+      /* flexible */
+      width: 20%; height: 20%;
+    }
+    /* button style */
+    button {
+      padding: 2px 4px;
+      font-size: 10px;
+      margin-right: 5px;
+    }
+    /* list style */
+    select {
+      padding: 2px 4px;
+      font-size: 10px;
+      margin-right: 5px;
+    }
+
+    /* #startAudio {
+      position: absolute; top: 10px; right: 10px;
+      z-index: 10;
+      padding: 8px 12px;
+      font-size: 14px;
+    } */
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+      "three/examples/jsm/": "https://unpkg.com/three@0.165.0/examples/jsm/",
+      "@mkkellogg/gaussian-splats-3d": "https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="info">
+    <div id="ui">
+      <!-- <label for="sceneSelect">Select Scene: </label>
+      <select id="sceneSelect">
+        <option value="scenes/points_2.ply">lake</option>
+        <option value="scenes/points_5.ply">village</option>
+        <option value="scenes/points_6.ply">hill & village</option>
+        <option value="scenes/points_7.ply">village-night</option>
+        <option value="scenes/points_8.ply">garden</option>
+        <option value="scenes/points_10.ply">forest-night</option>
+        <option value="scenes/points_11.ply">island</option>
+        <option value="scenes/points_14.ply">forest & river</option>
+        <option value="scenes/points_18.ply">mountain</option>
+        <option value="scenes/points_19.ply">owl</option>
+        <option value="scenes/points_1.ply">hard:forest</option>
+        <option value="scenes/points_15.ply">hard:forest-2</option>
+        <option value="scenes/points_4.ply">fail:flower</option>
+      </select>
+      <button id="loadScene">Load</button><br> -->
+      <label for="GsceneSelect">Select Gaussian Scene: </label>
+      <select id="GsceneSelect">
+        <option value="scene-d-demo/landscape-river">
+          landscape-river
+        </option>
+        <option value="scene-d-demo/landscape-river-2">
+          landscape-river (unbalanced)
+        </option>
+      </select>
+      <button id="loadGaussianScene">Load</button>
+    </div>
+    <div id="ui2">
+      <!-- <label for="selectStatic">Select Static Audio: </label>
+      <select id="selectStatic">
+        <option value="audio_sources/2-lake/audio_static.json">lake (lake-only)</option>
+        <option value="audio_sources/2/audio_static.json">lake</option>
+        <option value="audio_sources/5/audio_static.json">village</option>
+        <option value="audio_sources/8/audio_static.json">garden</option>
+      </select> -->
+      <!-- <button id="loadStatic">Load Static Sources</button> -->
+      <button id="toggleStaticSourceVisibility">Toggle Centroid Visibility 👀</button>
+      <button id="toggleClusterVisibility">Toggle Cluster Visibility</button>
+      <br>Rendering Method: <button id="toggleVolumeAudio">Volume Audio</button>
+      <br>Audio Control: <button id="togglePlay" disabled>⏸️ Pause</button>
+    </div>
+    WASD: Move forward/backward/left/right<br>
+    I/K: Move up/down  Mouse: Look around<br>
+    Access via HTTP server
+  </div>
+
+  <!-- <script src="https://cdn.jsdelivr.net/npm/three@0.123/build/three.min.js"></script> -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/three@0.123/examples/js/loaders/PLYLoader.js"></script> -->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/numjs/0.7.0/numjs.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/numjs/0.7.0/numjs.min.js"></script> -->
+  <script type="module">
+    // import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
+    // import * as GaussianSplats3D from 'https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js';
+    import * as THREE from 'three';
+    import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader.js";
+    import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+
+    // Audio
+    const plyLoader = new PLYLoader();
+    let audioCtx = null;
+    let srcNode = null;
+    let gainNode = null;           // Distance attenuation (shared by both modes)
+    let stereoPanner = null;       // Stereo mode
+    let foa = null;                // { merger, gW, gX, gY, gZ }  FOA mode
+    const staticSources = [];   // [{pos, srcNode, gain, panner}, ...]
+    let volumeAudio = true; // whether to use volume audio or point audio
+    let sourceVisible = false; // whether to show the source centroid or not
+    let isSingleSource = false;
+    const panContainer = document.getElementById('panContainer');
+    const panMeter     = document.getElementById('panMeter');
+    const panValue     = document.getElementById('panValue');
+    const gainMeter    = document.getElementById('gainMeter');
+    const gainValue    = document.getElementById('gainValue');
+    const c = 343.3;
+    const scene = new THREE.Scene();
+    scene.add(new THREE.HemisphereLight(0x808080, 0x202020));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.5);
+    dl.position.set(5, 10, 7);
+    scene.add(dl);
+
+
+
+    document.getElementById('toggleVolumeAudio').addEventListener('click', function () {
+      volumeAudio = !volumeAudio;
+      this.textContent = volumeAudio ? 'Volume Audio' : 'Point Audio';
+    });
+    document.getElementById('toggleStaticSourceVisibility').addEventListener('click', () => {
+      staticSources.forEach(s => {
+        if (s.centroid) {
+          s.centroid.visible = !s.centroid.visible;
+        }
+      });
+    });
+    document.getElementById('toggleClusterVisibility').addEventListener('click', () => {
+      sourceVisible = !sourceVisible;
+      for (const s of staticSources) {
+        if (s.points) {
+          s.points.visible = sourceVisible;
+        }
+      }
+    });
+
+    function loadPlyAsPoints(url, opts = {}) {
+      const {
+        size = 0.1,
+        vertexColors = undefined,
+        // color = 0xffffff, // rand how to randomize color?
+        color = Math.random() * 0xffffff,
+      } = opts;
+
+      return new Promise((resolve, reject) => {
+        const loader = new PLYLoader();
+        loader.load(
+          url,
+          geometry => {
+            const useVertexColors = 
+              vertexColors !== undefined
+                ? vertexColors
+                : geometry.hasAttribute('color');
+
+            const material = new THREE.PointsMaterial({
+              size,
+              color,
+              vertexColors: useVertexColors
+            });
+
+            const points = new THREE.Points(geometry, material);
+            points.visible = sourceVisible;
+            resolve(points);
+          },
+          xhr => {},
+          err => reject(new Error(`Load PLY failed: ${err.message}`))
+        );
+      });
+    }
+
+    async function loadStaticSourceList(basePath) {
+      if (staticSources.length > 0) {
+        staticSources.forEach(s => {
+          if (s.srcNode) {
+            s.srcNode.stop();
+            s.srcNode.disconnect();
+            s.gain.disconnect();
+            if (s.stereoPan) s.stereoPan.disconnect();
+            if (s.centroid) scene.remove(s.centroid);
+            if (s.points) scene.remove(s.points);
+          }
+        });
+        staticSources.length = 0; // empty the array
+      }
+
+      // Ensure audioCtx exists
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      updatePlayButton();
+      const jsonPath = basePath + (basePath.endsWith('/') ? '' : '/') + 'grounding/grounding.json';
+      const audioDir = basePath + (basePath.endsWith('/') ? '' : '/') + 'audio/';
+      const groundingDir = basePath + (basePath.endsWith('/') ? '' : '/') + 'grounding/';
+      
+      // What if the JSON file does not exist?
+      // try {
+      //   await fetch(jsonPath);
+      // } catch (err) {
+      //   console.error(`Failed to fetch JSON file at ${jsonPath}:`, err);
+      //   return;
+      // }
+      // const list = await fetch(jsonPath).then(r => r.json());
+      let list;
+      try {
+        const response = await fetch(jsonPath);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        list = await response.json();
+      } catch (err) {
+        console.log(`Failed to fetch JSON file at ${jsonPath}:`, err);
+        return;
+      }
+
+      
+      // iterate over the list and create sources
+      for (const { class_label, centroid, pcd, audio_path} of list) {
+        const buf = await fetch(audioDir + audio_path)
+        .then(r => r.arrayBuffer())
+        .then(ab => audioCtx.decodeAudioData(ab));
+        
+        const srcNode     = audioCtx.createBufferSource();
+        const gain        = audioCtx.createGain();
+        const stereoPan   = audioCtx.createStereoPanner();
+        
+        srcNode.buffer = buf;
+        srcNode.loop   = true;
+        srcNode.connect(gain).connect(stereoPan).connect(audioCtx.destination);
+        srcNode.start();
+        
+        const src_sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(0.3, 32, 32),
+          new THREE.MeshStandardMaterial({ color: 0xff4444 })
+        );
+        src_sphere.position.copy(new THREE.Vector3(...centroid));
+        src_sphere.visible = false; // invisible by default
+        scene.add(src_sphere);
+
+        const src_xyzs = await loadPlyAsPoints(groundingDir + pcd);
+
+        scene.add(src_xyzs);
+
+        staticSources.push({
+          pos: new THREE.Vector3(...centroid),
+          srcNode, gain, stereoPan, centroid: src_sphere, points: src_xyzs
+        });
+      }
+      isSingleSource = (staticSources.length === 1);
+    }
+    function setupAudioGraph() {
+      stereoPanner = audioCtx.createStereoPanner();
+      srcNode.connect(gainNode).connect(stereoPanner).connect(audioCtx.destination);
+    }
+    function pointSourceRender(s, camera) {
+      const rel = new THREE.Vector3().subVectors(s.pos, camera.position);
+      const d   = rel.length();
+      const u   = rel.normalize();
+
+      /* Static => Relative velocity comes from the listener only */
+      const vRel = velocity.dot(u);
+      const att  = 1 / Math.max(d, 1);
+
+      s.srcNode.playbackRate.value = c / (c - vRel);
+      s.gain.gain.value = att;
+      const relLocal = u.clone().applyQuaternion(camera.quaternion.clone().invert());
+      s.stereoPan.pan.value = relLocal.x;
+      // console.log(`Stereo Pan: ${s.stereoPan.pan.value.toFixed(3)}, Gain: ${s.gain.gain.value.toFixed(3)}`);
+    }
+    function computeStereoTHREE(camera, geometry) {
+      const posAttr = geometry.attributes.position;
+      const array = posAttr.array;
+      const N = array.length / 3;
+      const eps = 1e-6;
+
+      const tempV = new THREE.Vector3();
+
+      let sumW = 0;
+      let sumX = 0;
+
+      for (let i = 0; i < N; i++) {
+        tempV.fromArray(array, i * 3).clone();
+        tempV.sub(camera.position);
+        tempV.applyQuaternion(camera.quaternion.clone().invert());
+
+        const d = tempV.length();
+        const invD = 1.0 / Math.max(d, 1e-5);
+        const ux = tempV.x * invD;
+
+        const attn = invD;
+
+        sumW += attn;
+        sumX += ux * attn;
+      }
+
+      // mean values
+      const wMean = sumW / N;
+      const xMean = sumX / N;
+
+      // clamp(-1,1)
+      const pan = Math.max(-1, Math.min(1, xMean / (wMean + eps)));
+      // console.log(`Stereo Pan: ${pan.toFixed(3)}, Gain: ${wMean.toFixed(3)}`);
+      return { gain: wMean, pan };
+    }
+
+    function clusterSourceRender(s, camera) {
+      const rel = new THREE.Vector3().subVectors(s.pos, camera.position);
+      const u   = rel.normalize();
+
+      /* Static => Relative velocity comes from the listener only */
+      const vRel = velocity.dot(u);
+      s.srcNode.playbackRate.value = c / (c - vRel);
+      
+      const result = computeStereoTHREE(camera, s.points.geometry);
+      s.gain.gain.value = result.gain;
+      s.stereoPan.pan.value = result.pan;
+    }
+
+    function updateStaticSources() {
+      for (const s of staticSources) {
+        if (!volumeAudio) {
+          pointSourceRender(s, camera);
+        } else {
+          clusterSourceRender(s, camera);
+        }
+      }
+    }
+
+
+    const renderWidth = innerWidth;
+    const renderHeight = innerHeight;
+    const clock = new THREE.Clock();
+    
+    let hasScene = false;
+
+
+    const rootElement = document.createElement('div');
+    rootElement.style.width = renderWidth + 'px';
+    rootElement.style.height = renderHeight + 'px';
+    document.body.appendChild(rootElement);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: false
+    });
+    renderer.setSize(renderWidth, renderHeight);
+    rootElement.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(65, renderWidth / renderHeight, 0.1, 500);
+    camera.position.copy(new THREE.Vector3().fromArray([0, 0, 0]));
+    camera.up = new THREE.Vector3().fromArray([0, 0, 1]).normalize();
+    // camera.lookAt(new THREE.Vector3().fromArray([1, 0, 1]));
+
+    const viewer = new GaussianSplats3D.Viewer({
+      'threeScene': scene,
+      'selfDrivenMode': false,
+      'renderer': renderer,
+      'camera': camera,
+      'useBuiltInControls': false,
+      'ignoreDevicePixelRatio': false,
+      'gpuAcceleratedSort': false,
+      'enableSIMDInSort': false,
+      'sharedMemoryForWorkers': false,
+      'integerBasedSort': true,
+      'halfPrecisionCovariancesOnGPU': true,
+      'dynamicScene': false,
+      'webXRMode': GaussianSplats3D.WebXRMode.None,
+      'renderMode': GaussianSplats3D.RenderMode.OnChange,
+      'sceneRevealMode': GaussianSplats3D.SceneRevealMode.Instant,
+      'antialiased': false,
+      'focalAdjustment': 1.0,
+      'logLevel': GaussianSplats3D.LogLevel.None,
+      'sphericalHarmonicsDegree': 0,
+      'enableOptionalEffects': false,
+      'inMemoryCompressionLevel': 2,
+      'freeIntermediateSplatData': true
+    });
+    
+
+    const prevPos = camera.position.clone();
+    const velocity = new THREE.Vector3();
+
+    function update() {
+      requestAnimationFrame(update);
+
+      const dt = clock.getDelta();
+      const speed = 0.5;
+      // const speed = 100;
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      dir.y = 0; dir.normalize();
+      const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+      camera.position.addScaledVector(dir, speed * (move.forward - move.back) * dt);
+      camera.position.addScaledVector(right, speed * (move.right - move.left) * dt);
+      camera.position.y += speed * (move.up - move.down) * dt;
+
+      // Update velocity
+      velocity.subVectors(camera.position, prevPos).divideScalar(dt);
+      updateStaticSources(); 
+      prevPos.copy(camera.position);
+
+
+      viewer.update();
+      viewer.render();
+
+    }
+
+    let yaw = 0, pitch = 0;
+    const sensitivity = 0.002;
+    renderer.domElement.addEventListener('click', ()=>renderer.domElement.requestPointerLock());
+    document.addEventListener('pointerlockchange', ()=>{
+      if (document.pointerLockElement === renderer.domElement) {
+        document.addEventListener('mousemove', onMouseMove);
+      } else {
+        document.removeEventListener('mousemove', onMouseMove);
+      }
+    });
+    function onMouseMove(e) {
+      yaw   -= e.movementX * sensitivity;
+      pitch -= e.movementY * sensitivity;
+      pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y = yaw;
+      camera.rotation.x = pitch;
+    }
+    const move = { forward: 0, back: 0, left: 0, right: 0, up: 0, down: 0 };
+    window.addEventListener('keydown', e => setMove(e.code, 1));
+    window.addEventListener('keyup', e => setMove(e.code, 0));
+    function setMove(code, v) {
+      switch (code) {
+        case 'KeyW': move.forward = v; break;
+        case 'KeyS': move.back = v; break;
+        case 'KeyA': move.left = v; break;
+        case 'KeyD': move.right = v; break;
+        case 'KeyI': move.up = v; break;
+        case 'KeyK': move.down = v; break;
+      }
+    }
+
+    document.getElementById('loadGaussianScene').addEventListener('click', function () {
+      const selectedScene = document.getElementById('GsceneSelect').value + '/gaussian.compressed.ply';
+      // reloadPLY(selectedScene);
+      // viewer.removeSplatScene(0);
+      if (hasScene) {
+        viewer.removeSplatScene(0).then(()=>{
+          hasScene = false;
+          console.log('Scene removed successfully');
+          hasScene = true;
+          viewer.addSplatScene(
+            selectedScene,
+            {
+              'splatAlphaRemovalThreshold': 5,
+              'showLoadingUI': true,
+              'position': [0, 0, 0],
+              'rotation': [-.5, -.5, -.5, .5],
+              // 'rotation': [0, 0, 0, 1],
+              // 'scale': [1.0, -1.0, 1.0],
+              'scale': [1.0, 1.0, 1.0],
+              'progressiveLoad': true,
+            },
+          );
+        }).catch((err)=>{
+          console.error('Failed to remove scene:', err);
+        });
+      } else {
+        hasScene = true;
+        viewer.addSplatScene(
+          selectedScene,
+          {
+            'splatAlphaRemovalThreshold': 5,
+            'showLoadingUI': true,
+            'position': [0, 0, 0],
+            // 'rotation': [0, 1, 0, 0],
+            'rotation': [-.5, -.5, -.5, .5],
+            // 'scale': [-1.0, -1.0, 1.0],
+            'scale': [1.0, 1.0, 1.0],
+            'progressiveLoad': true,
+          },
+        ).then(()=>{
+          requestAnimationFrame(update);
+          // viewer.start();
+        });
+      }
+      loadStaticSourceList(document.getElementById('GsceneSelect').value);
+
+    });  
+    // NEW: play/pause button reference
+    const playBtn = document.getElementById('togglePlay');
+
+    // NEW: Function to update button state
+    function updatePlayButton() {
+      if (!audioCtx) {
+        playBtn.disabled = true;
+        playBtn.textContent = '▶️ Play';
+        return;
+      }
+      playBtn.disabled = false;
+      playBtn.textContent = (audioCtx.state === 'running') ? '⏸️ Pause' : '▶️ Play';
+    }
+
+    // NEW: Function to toggle play/pause
+    async function toggleAudioPlay() {
+      if (!audioCtx) return;
+      if (audioCtx.state === 'running') {
+        await audioCtx.suspend();
+      } else {
+        await audioCtx.resume();
+      }
+      updatePlayButton();
+    }
+
+    // NEW: Bind button click
+    playBtn.addEventListener('click', () => {
+      toggleAudioPlay();
+    });
+
+    // NEW: Keyboard shortcut (Space)
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        toggleAudioPlay();
+      }
+    });
+    // function reloadPLY(file) {
+    //   plyLoader.load(file, function (geometry) {
+    //     const material = new THREE.PointsMaterial({
+    //       size: 0.05,
+    //       vertexColors: true
+    //     });  
+
+    //     // remove previous points if exists
+    //     if (points) {
+    //       scene.remove(points);
+    //     }  
+
+    //     points = new THREE.Points(geometry, material);
+    //     scene.add(points);
+    //   }, undefined, function (err) {
+    //     console.error('Failed to load PLY:', err);
+    //   });  
+    // }  
+  </script>
+</body>
+</html>

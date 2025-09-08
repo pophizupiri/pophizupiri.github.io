@@ -1,0 +1,57 @@
+[
+    {
+        "class_label": "river", 
+        "pcd": "00_points_down.ply", 
+        "centroid": [-0.26958513259887695, -0.8676988482475281, -3.7501583099365234], 
+        "pcd_points": "00_points.ply", 
+        "pcd_points_down": "00_points_down.ply", 
+        "pcd_weights": "00_points_weights.npy", 
+        "audio_path": "Stream: wide river, steady rush, daytime, outside, long loop, no voices or cars-4-8dB.wav"
+    },
+    {
+        "class_label": "tree",
+        "pcd": "02_points_down.ply",
+        "centroid": [107.5660400390625, 19.929729461669922, -61.82379913330078],
+        "pcd_points": "02_points.ply",
+        "pcd_points_down": "02_points_down.ply",
+        "pcd_weights": "02_points_weights.npy",
+        "audio_path": "Cricket: one close cricket; clear “chirp-chirp.-15-22dB.wav"
+    },
+    {
+        "class_label": "tree", 
+        "pcd": "03_points_down.ply", 
+        "centroid": [94.88816833496094, 6.103132247924805, -183.17617797851562], 
+        "pcd_points": "03_points.ply", 
+        "pcd_points_down": "03_points_down.ply", 
+        "pcd_weights": "03_points_weights.npy", 
+        "audio_path": "Rustling leaves: near-field leaf flutter, tiny stem creaks, right side feel.-7-22dB.wav"
+    },
+    {
+        "class_label": "tree", 
+        "pcd": "09_points_down.ply", 
+        "centroid": [-174.34646606445312, 11.798074722290039, 224.9409637451172], 
+        "pcd_points": "09_points.ply", 
+        "pcd_points_down": "09_points_down.ply", 
+        "pcd_weights": "09_points_weights.npy", 
+        "audio_path": "bird song-14-14dB.wav"
+    },
+    {
+        "class_label": "tree",
+        "pcd": "07_points_down.ply",
+        "centroid": [-1.3427178859710693, -0.2643943130970001, -4.012349605560303],
+        "pcd_points": "07_points.ply",
+        "pcd_points_down": "07_points_down.ply",
+        "pcd_weights": "07_points_weights.npy",
+        "audio_path": "Rustling leaves (very light): light breeze in trees, steady.-11-22dB.wav"
+    },
+    {
+        "class_label": "tree",
+        "pcd": "06_points_down.ply",
+        "centroid": [69.85120391845703, 2.419956922531128, -150.41073608398438],
+        "pcd_points": "06_points.ply",
+        "pcd_points_down": "06_points_down.ply",
+        "pcd_weights": "06_points_weights.npy",
+        "audio_path": "Bird vocalization, bird song: light daytime chirps and tweets.-13-14dB.wav"
+    }
+
+]
