@@ -1,0 +1,7 @@
+[
+{"diffusion_prompt": "cold river under ice gentle rush", "grounding_label": "river", "peak_db": -12},
+{"diffusion_prompt": "wind through snowy pine needles", "grounding_label": "trees", "peak_db": -16},
+{"diffusion_prompt": "sharp ice crack and pop", "grounding_label": "ice", "peak_db": -18},
+{"diffusion_prompt": "small water drops from icicles", "grounding_label": "icicles", "peak_db": -22},
+{"diffusion_prompt": "open snowy forest still air hush", "grounding_label": "global", "peak_db": -30}
+]
