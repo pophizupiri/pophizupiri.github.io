@@ -1232,7 +1232,6 @@
       labelRenderer.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      viewer.updateSplatMeshUniforms();
     }
     window.addEventListener('resize', onWindowResize);
 
@@ -1498,7 +1497,7 @@
               'position': [0, 0, 0],
               'rotation': [1, 0, 0, 0],
               'scale': [1.0, 1.0, 1.0],
-              'progressiveLoad': true,
+              'progressiveLoad': false,
             },
           );
         }).catch((err)=>{
@@ -1514,7 +1513,7 @@
             'position': [0, 0, 0],
             'rotation': [1, 0, 0, 0],
             'scale': [1.0, 1.0, 1.0],
-            'progressiveLoad': true,
+            'progressiveLoad': false,
           },
         ).then(()=>{
           requestAnimationFrame(update);
@@ -1533,7 +1532,7 @@
               'position': [0, 0, 0],
               'rotation': [1, 0, 0, 0],
               'scale': [1.0, 1.0, 1.0],
-              'progressiveLoad': true,
+              'progressiveLoad': false,
             },
           ).then(() => {
             minimapSceneLoaded = true;
@@ -1548,7 +1547,7 @@
             'position': [0, 0, 0],
             'rotation': [1, 0, 0, 0],
             'scale': [1.0, 1.0, 1.0],
-            'progressiveLoad': true,
+            'progressiveLoad': false,
           },
         ).then(() => {
           minimapSceneLoaded = true;
